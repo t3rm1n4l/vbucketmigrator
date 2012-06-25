@@ -509,10 +509,11 @@ int main(int argc, char **argv)
     bool validate = false;
     bool flush = false;
     bool registeredTapClient = false;
+    bool getCksum = false;
     string expiryResetValue;
     string flagResetValue;
 
-    while ((cmd = getopt(argc, argv, "N:Aa:h:b:d:tvFT:e?VE:rf:")) != EOF) {
+    while ((cmd = getopt(argc, argv, "N:Aa:h:b:d:tvFT:e?VE:rf:c")) != EOF) {
         switch (cmd) {
         case 'E':
             expiryResetValue.assign(optarg);
@@ -563,6 +564,9 @@ int main(int argc, char **argv)
             break;
         case 'r':
             registeredTapClient = true;
+            break;
+        case 'c':
+            getCksum = true;
             break;
         case '?': /* FALLTHROUGH */
         default:
@@ -659,7 +663,7 @@ int main(int argc, char **argv)
     }
 
     upstreamPipe->sendMessage(new TapRequestBinaryMessage(name, buckets, takeover,
-                                                          tapAck, registeredTapClient));
+                                                          tapAck, registeredTapClient, getCksum));
     upstreamPipe->updateEvent();
     upstream.setDownstream(downstreamPipe);
     controller.setUpstream(upstreamPipe);

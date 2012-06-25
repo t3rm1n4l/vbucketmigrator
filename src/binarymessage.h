@@ -196,7 +196,8 @@ public:
 class TapRequestBinaryMessage : public BinaryMessage {
 public:
     TapRequestBinaryMessage(const std::string &name, std::vector<uint16_t> buckets,
-                            bool takeover, bool tapAck, bool registeredTapClient) :
+                            bool takeover, bool tapAck, bool registeredTapClient, 
+                            bool getCksum) :
         BinaryMessage()
     {
         size = sizeof(data.tap_connect->bytes) + buckets.size() * 2 + 2 + name.length();
@@ -216,6 +217,10 @@ public:
         uint32_t flags = TAP_CONNECT_FLAG_LIST_VBUCKETS;
         if (takeover) {
             flags |= TAP_CONNECT_FLAG_TAKEOVER_VBUCKETS;
+        }
+
+        if (getCksum) {
+            flags |= TAP_CONNECT_REQUEST_CKSUM;    
         }
 
         if (tapAck) {
