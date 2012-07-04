@@ -68,7 +68,8 @@ static void usage(std::string binary) {
          << "\t-V           Validate bucket takeover" << endl
          << "\t-E expiry    Reset the expiry of all items to 'expiry'." << endl
          << "\t-f flag      Reset the flag of all items to 'flag'." << endl
-         << "\t-r           Connect to the master as a registered TAP client" << endl;
+         << "\t-r           Connect to the master as a registered TAP client" << endl
+         << "\t-c           Connect to the master with checksum flag" << endl;
     exit(EX_USAGE);
 }
 
