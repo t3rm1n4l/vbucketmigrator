@@ -24,6 +24,7 @@
 #include <fcntl.h>
 #include <assert.h>
 #include <cstring>
+#include <net/if.h>
 
 #include "sockstream.h"
 
@@ -145,8 +146,9 @@ void Socket::resolve(void) throw (string)
     }
 }
 
-void Socket::connect(void) throw (string)
+void Socket::connect(std::string iface) throw (string)
 {
+    int myerrno = 0;
     if (sock != INVALID_SOCKET) {
         throw "Can't call connect() with an open Socket. Call close()!!";
     }
@@ -160,9 +162,23 @@ void Socket::connect(void) throw (string)
             continue;
         }
 
+        if (iface.length() > 0) {
+            struct ifreq ifr;
+            memset(&ifr, 0, sizeof(ifr));
+            snprintf(ifr.ifr_name, sizeof(ifr.ifr_name), iface.c_str());
+            if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE,
+                        (void *)&ifr, sizeof(ifr)) < 0) {
+                stringstream msg;
+                msg << "Failed to bind to [" << iface << "]";
+                closesocket(sock);
+                throw msg.str();
+            }
+        }
+        
         if (::connect(sock, next->ai_addr, next->ai_addrlen) == SOCKET_ERROR) {
             closesocket(sock);
             sock = INVALID_SOCKET;
+            myerrno = errno;
             continue;
         }
 
@@ -171,7 +187,7 @@ void Socket::connect(void) throw (string)
 
     if (sock == INVALID_SOCKET) {
         stringstream msg;
-        msg << "Failed to connect to [" << host << ":" << port << "]";
+        msg << "Failed to connect to [" << host << ":" << port << "]. Error: " << myerrno;
         throw msg.str();
     }
 }

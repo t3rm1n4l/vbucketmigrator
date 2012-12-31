@@ -26,7 +26,8 @@ vbucketmigrator_SOURCES = src/binarymessage.h \
                           src/config_helper.h \
                           src/mutex.h \
                           src/sockstream.cc src/sockstream.h \
-                          src/vbucketmigrator.cc
+                          src/vbucketmigrator.cc \
+                          src/stats.cc src/stats.h
 vbucketmigrator_LDADD = ${LTLIBEVENT}
 
 if HAVE_SASL

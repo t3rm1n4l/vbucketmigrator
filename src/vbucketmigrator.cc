@@ -31,6 +31,7 @@
 #include "sockstream.h"
 #include "binarymessagepipe.h"
 #include "buckets.h"
+#include "stats.h"
 
 #ifndef EX_SOFTWARE
 #define EX_SOFTWARE 70
@@ -45,6 +46,7 @@ static struct event timerev;
 static bool evtimer_active(false);
 
 static size_t packets(0);
+
 
 static void usage(std::string binary) {
     ssize_t idx = binary.find_last_of("/\\");
@@ -69,7 +71,8 @@ static void usage(std::string binary) {
          << "\t-E expiry    Reset the expiry of all items to 'expiry'." << endl
          << "\t-f flag      Reset the flag of all items to 'flag'." << endl
          << "\t-r           Connect to the master as a registered TAP client" << endl
-         << "\t-c           Connect to the master with checksum flag" << endl;
+         << "\t-c           Connect to the master with checksum flag" << endl
+         << "\t-i iface     The interface to use on the master to connect to the slave" << endl;
     exit(EX_USAGE);
 }
 
@@ -173,6 +176,7 @@ public:
 
     void messageSent(BinaryMessage *msg) {
         upstream->decrementPendingDownstream();
+        VbStats::instance()->update_sent_stats(msg->getVBucketId());
 
         uint8_t opcode = msg->data.req->request.opcode;
         if (opcode == PROTOCOL_BINARY_CMD_TAP_VBUCKET_SET) {
@@ -277,6 +281,7 @@ public:
             delete msg;
         } else {
             controller->incrementPendingDownstream();
+            VbStats::instance()->update_rcvd_stats(msg->getVBucketId());
             fixMessage(msg);
             downstream->sendMessage(msg);
         }
@@ -394,7 +399,8 @@ static BinaryMessagePipe *getServer(const string &destination,
                                     struct event_base *b,
                                     const std::string &auth,
                                     const std::string &passwd,
-                                    bool flush)
+                                    bool flush,
+                                    std::string iface = "")
 {
     BinaryMessagePipe* ret(NULL);
     std::string msg;
@@ -404,7 +410,7 @@ static BinaryMessagePipe *getServer(const string &destination,
         if (verbosity) {
             cout << "Connecting to " << *sock << endl;
         }
-        sock->connect();
+        sock->connect(iface);
         sock->setKeepalive(true);
         ret = new BinaryMessagePipe(*sock, cb, b, timeout);
         if (auth.length() > 0) {
@@ -499,6 +505,22 @@ static void stdin_check(struct event_base *evbase) {
 
 }
 
+void start_stats_thread(vector<uint16_t> buckets) {
+    pthread_t t;
+    pthread_attr_t attr;
+
+    VbStats::instance()->init_stats(buckets);
+
+    if (pthread_attr_init(&attr) != 0 ||
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0 ||
+        pthread_create(&t, &attr, stats_thread, (void*)NULL) != 0)
+    {
+        perror("couldn't create stats thread.");
+        exit(EX_OSERR);
+    }
+}
+
+
 int main(int argc, char **argv)
 {
     int cmd;
@@ -517,8 +539,10 @@ int main(int argc, char **argv)
     bool getCksum = false;
     string expiryResetValue;
     string flagResetValue;
+    string iface;       // The local interface to use while connecting to the destination.
+                        // Used to distribute replication load uniformly across all interfaces
 
-    while ((cmd = getopt(argc, argv, "N:Aa:h:b:d:tvFT:e?VE:rf:c")) != EOF) {
+    while ((cmd = getopt(argc, argv, "N:Aa:h:b:d:tvFT:e?VE:rf:ci:")) != EOF) {
         switch (cmd) {
         case 'E':
             expiryResetValue.assign(optarg);
@@ -573,6 +597,9 @@ int main(int argc, char **argv)
         case 'c':
             getCksum = true;
             break;
+        case 'i':
+            iface.assign(optarg);
+            break;
         case '?': /* FALLTHROUGH */
         default:
             usage(argv[0]);
@@ -626,6 +653,7 @@ int main(int argc, char **argv)
     }
 
     sort(buckets.begin(), buckets.end());
+    start_stats_thread(buckets);
     struct event_base *evbase = event_init();
     if (evbase == NULL) {
         cerr << "Failed to initialize libevent" << endl;
@@ -654,7 +682,7 @@ int main(int argc, char **argv)
 
     try {
         downstreamPipe = getServer(destination, downstream, evbase,
-                                   auth, passwd, flush);
+                                   auth, passwd, flush, iface);
         upstreamPipe = getServer(host, upstream, evbase,
                                  auth, passwd, false);
     } catch (std::string &e) {

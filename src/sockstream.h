@@ -78,7 +78,7 @@ public:
     void setKeepalive(bool enable) throw (std::string);
 
     void resolve(void) throw (std::string);
-    void connect(void) throw (std::string);
+    void connect(std::string iface="") throw (std::string);
     void close(void);
 
     SOCKET getSocket() const { return sock; }
