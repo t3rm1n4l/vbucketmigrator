@@ -7,7 +7,7 @@
 #include <errno.h>
 #include "stats.h"
 
-#define STAT_SOCK_PATH  "/var/tmp/vbs/vbm.sock"
+#define STAT_SOCK_PATH  "/var/tmp/vbs/vbm.sock."
 
 VbStats* VbStats::stats = NULL;
 
@@ -133,7 +133,14 @@ int server_socket_unix(const char *path, int access_mask) {
 
 void * stats_thread (void *arg) {
 
-    int sfd = server_socket_unix(STAT_SOCK_PATH, 0700);
+    std::string stat_sock_path(STAT_SOCK_PATH);
+    if (arg != NULL) {
+        std::string host((char *)arg);
+        host.erase(host.find_first_of(':'));
+        stat_sock_path.append(host);
+    }
+
+    int sfd = server_socket_unix(stat_sock_path.c_str(), 0700);
     
     while(1) {
         struct sockaddr_un claddr;

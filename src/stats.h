@@ -20,6 +20,7 @@ private:
     VbStats(VbStats const &){}
     VbStats& operator =(VbStats const&){}
 
+    std::string dest;
     std::map<uint16_t, VbCount> vbstats;
 
     static VbStats* stats;
