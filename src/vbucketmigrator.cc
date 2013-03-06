@@ -663,8 +663,10 @@ int main(int argc, char **argv)
         return EX_CONFIG;
     }
 
-    upstreamPipe->sendMessage(new TapRequestBinaryMessage(name, buckets, takeover,
+    upstreamPipe->sendMessage(new TapRequestBinaryMessage(true, name, buckets, takeover,
                                                           tapAck, registeredTapClient, getCksum));
+    downstreamPipe->sendMessage(new TapRequestBinaryMessage(false, name, buckets, false,
+                                                          false, false, false));
     upstreamPipe->updateEvent();
     upstream.setDownstream(downstreamPipe);
     controller.setUpstream(upstreamPipe);

@@ -95,6 +95,7 @@ public:
         switch (data.req->request.opcode) {
         case PROTOCOL_BINARY_CMD_NOOP: return "NOOP";
         case PROTOCOL_BINARY_CMD_TAP_CONNECT: return "TCONNECT";
+        case PROTOCOL_BINARY_CMD_TAP_CONNECT_CONSUMER: return "TCONNECT_CONSUMER";
         case PROTOCOL_BINARY_CMD_TAP_MUTATION: return "TMUTATION";
         case PROTOCOL_BINARY_CMD_TAP_DELETE: return "TDELETE";
         case PROTOCOL_BINARY_CMD_TAP_FLUSH: return "TFLUSH";
@@ -195,15 +196,20 @@ public:
 
 class TapRequestBinaryMessage : public BinaryMessage {
 public:
-    TapRequestBinaryMessage(const std::string &name, std::vector<uint16_t> buckets,
-                            bool takeover, bool tapAck, bool registeredTapClient, 
-                            bool getCksum) :
+    TapRequestBinaryMessage(bool tapProducer, const std::string &name, std::vector<uint16_t> buckets,
+                            bool takeover, bool tapAck, bool registeredTapClient, bool getCksum) :
         BinaryMessage()
     {
         size = sizeof(data.tap_connect->bytes) + buckets.size() * 2 + 2 + name.length();
         data.rawBytes = new char[size];
         data.req->request.magic = PROTOCOL_BINARY_REQ;
-        data.req->request.opcode = PROTOCOL_BINARY_CMD_TAP_CONNECT;
+
+        if (tapProducer) {
+            data.req->request.opcode = PROTOCOL_BINARY_CMD_TAP_CONNECT;
+        } else {
+            data.req->request.opcode = PROTOCOL_BINARY_CMD_TAP_CONNECT_CONSUMER;
+        }
+
         data.req->request.keylen = ntohs(static_cast<uint16_t>(name.length()));
         data.req->request.extlen = 4;
         data.req->request.datatype = PROTOCOL_BINARY_RAW_BYTES;
