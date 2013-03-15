@@ -220,13 +220,18 @@ public:
         data.req->request.opaque = 0xcafecafe;
         data.req->request.cas = 0;
 
-        uint32_t flags = TAP_CONNECT_FLAG_LIST_VBUCKETS;
+        uint32_t flags = 0;
+
+        if (!buckets.empty()) {
+            flags |= TAP_CONNECT_FLAG_LIST_VBUCKETS;
+        }
+
         if (takeover) {
             flags |= TAP_CONNECT_FLAG_TAKEOVER_VBUCKETS;
         }
 
         if (getCksum) {
-            flags |= TAP_CONNECT_REQUEST_CKSUM;    
+            flags |= TAP_CONNECT_REQUEST_CKSUM;
         }
 
         if (tapAck) {

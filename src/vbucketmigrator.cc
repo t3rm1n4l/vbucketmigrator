@@ -262,7 +262,11 @@ public:
             allow = true;
             break;
         default:
-            allow = false;
+            if (buckets.empty()) {
+                allow = true;
+            } else  {
+                allow = false;
+            }
         }
         if (!allow && !std::binary_search(buckets.begin(), buckets.end(),
                                 msg->getVBucketId())) {
@@ -618,11 +622,6 @@ int main(int argc, char **argv)
 
     if (destination.empty()) {
         cerr << "Can't perform bucket migration without a destination host" << endl;
-        return EX_USAGE;
-    }
-
-    if (buckets.empty()) {
-        cerr << "Please specify the buckets to migrate by using -b" << endl;
         return EX_USAGE;
     }
 
