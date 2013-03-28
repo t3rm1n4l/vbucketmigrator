@@ -48,6 +48,8 @@ static bool evtimer_active(false);
 static size_t packets(0);
 
 
+void start_stats_thread(std::string dest, vector<uint16_t> buckets);
+
 static void usage(std::string binary) {
     ssize_t idx = binary.find_last_of("/\\");
     if (idx != -1) {

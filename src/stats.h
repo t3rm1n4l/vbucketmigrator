@@ -1,5 +1,8 @@
 #include <vector>
 #include <map>
+#include <stdint.h>
+#include <sys/stat.h>
+#include <vector>
 
 typedef struct _vbcount {
     uint32_t rcvd;
@@ -18,7 +21,7 @@ public:
 private:
     VbStats(){}
     VbStats(VbStats const &){}
-    VbStats& operator =(VbStats const&){}
+    void  operator =(VbStats const&){}
 
     std::string dest;
     std::map<uint16_t, VbCount> vbstats;
@@ -28,3 +31,4 @@ private:
 
 
 void * stats_thread (void *arg);
+int server_socket_unix(const char *path, int access_mask);

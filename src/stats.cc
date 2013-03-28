@@ -5,6 +5,7 @@
 #include <sys/un.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <stdio.h>
 #include "stats.h"
 
 #define STAT_SOCK_PATH  "/var/tmp/vbs/vbm.sock."
@@ -50,7 +51,6 @@ std::string VbStats::get_stats_str() {
     for (iter = vbstats.begin(); iter != vbstats.end(); ++iter) {
         uint16_t vbid = iter->first;
         VbCount *vbc = &(iter->second);
-        printf("VBID %d \n", vbid );
         sstm << "vb:" << vbid  << " rcvd:" << vbc->rcvd << " sent:" << vbc->sent << "\n";
     } 
 
