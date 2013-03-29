@@ -8,7 +8,8 @@
 #include <stdio.h>
 #include "stats.h"
 
-#define STAT_SOCK_PATH  "/var/tmp/vbs/vbm.sock."
+#define STAT_SOCK_DIR "/var/tmp/vbs/"
+#define STAT_SOCK_FILE_PREFIX "vbm.sock."
 
 VbStats* VbStats::stats = NULL;
 
@@ -60,21 +61,13 @@ std::string VbStats::get_stats_str() {
 
 static int new_socket_unix(void) {
     int sfd;
+    char error_str[128];
 
-    if ((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-        perror("socket()");
+    if ((sfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+        snprintf(error_str, 128, "Unable to create unix domain socket %d %s", errno, strerror(errno));
+        perror(error_str);
         return -1;
     }
-
-    /*
-    int flags;
-    if ((flags = fcntl(sfd, F_GETFL, 0)) < 0 ||
-            fcntl(sfd, F_SETFL, flags | O_NONBLOCK) < 0) {
-        perror("setting O_NONBLOCK");
-        close(sfd);
-        return -1;
-    }
-    */
     return sfd;
 }
 
@@ -132,15 +125,43 @@ int server_socket_unix(const char *path, int access_mask) {
 }
 
 void * stats_thread (void *arg) {
+    std::string stat_sock_path(STAT_SOCK_DIR);
+    struct stat sb;
+    char error_str[128];
+    
+    /* Verify if the directory exists
+    * If not, create it
+    */
+    if (stat(STAT_SOCK_DIR, &sb) != 0) {
+        if (mkdir(STAT_SOCK_DIR, S_IRWXU) != 0) {
+            snprintf(error_str, 128, "Unable to create path %s because %s",STAT_SOCK_DIR, strerror(errno));
+            perror(error_str);
+            return NULL; 
+        }
+    } else if (!(sb.st_mode & S_IFDIR)) {
+        snprintf(error_str, 128, "Invalid path %s is not a directory", STAT_SOCK_DIR);
+        perror(error_str);
+        return NULL;
+    }
 
-    std::string stat_sock_path(STAT_SOCK_PATH);
+    /* Create complete file path */
+    stat_sock_path.append(std::string(STAT_SOCK_FILE_PREFIX));
+
     if (arg != NULL) {
         std::string host((char *)arg);
-        host.erase(host.find_first_of(':'));
+        int pos = host.find_first_of(':');
+        if (pos >= 0) 
+            host.erase(pos);
         stat_sock_path.append(host);
     }
 
-    int sfd = server_socket_unix(stat_sock_path.c_str(), 0700);
+	
+    int sfd = 0;
+    if ((sfd = server_socket_unix(stat_sock_path.c_str(), 0700)) <= 0 ) {
+        snprintf (error_str, 128, " Error %s %s", stat_sock_path.c_str(), strerror(errno));
+        perror(error_str);
+        return NULL;
+    };
     
     while(1) {
         struct sockaddr_un claddr;
@@ -149,22 +170,20 @@ void * stats_thread (void *arg) {
         int newsockfd;
         int n;
 
-        printf("Listening on sock %d \n", sfd);
         newsockfd = accept(sfd, 
                 (struct sockaddr *) &claddr, &cllen);
-        if (newsockfd < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                printf("errno %d \n", errno);
-                sleep(1);
-                continue;
-            }
-            else {
-                printf("ERROR on accept errno %d \n", errno);
-                continue;
-            }
+
+        if (newsockfd < 0 && errno == EINTR) {
+            snprintf(error_str, 128, "errno %d %s\n", errno, strerror(errno));
+            perror(error_str);
+            sleep(1);
+            continue;
+        } else if (newsockfd < 0) {
+            snprintf(error_str, 128, "ERROR on accept errno %d %s\n", errno, strerror(errno));
+            perror(error_str);
+            continue;
         } 
 
-        printf("Accepted!");
         n = read(newsockfd, buffer, 255);
         if (n < 0) {
             close(newsockfd);
