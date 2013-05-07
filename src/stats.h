@@ -17,13 +17,13 @@ public:
     void update_rcvd_stats(uint16_t vb);
     std::string get_stats_str();
     static VbStats * instance();
+    std::string dest, src;
 
 private:
     VbStats(){}
     VbStats(VbStats const &){}
     void  operator =(VbStats const&){}
 
-    std::string dest;
     std::map<uint16_t, VbCount> vbstats;
 
     static VbStats* stats;

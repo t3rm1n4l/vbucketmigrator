@@ -507,15 +507,17 @@ static void stdin_check(struct event_base *evbase) {
 
 }
 
-void start_stats_thread(std::string dest, vector<uint16_t> buckets) {
+void start_stats_thread(std::string dest, std::string src, vector<uint16_t> buckets) {
     pthread_t t;
     pthread_attr_t attr;
 
     VbStats::instance()->init_stats(buckets);
+    VbStats::instance()->dest = dest;
+    VbStats::instance()->src = src;
 
     if (pthread_attr_init(&attr) != 0 ||
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED) != 0 ||
-        pthread_create(&t, &attr, stats_thread, (void*)dest.c_str()) != 0)
+        pthread_create(&t, &attr, stats_thread, (void*)NULL) != 0)
     {
         perror("couldn't create stats thread.");
         exit(EX_OSERR);
@@ -655,7 +657,7 @@ int main(int argc, char **argv)
     }
 
     sort(buckets.begin(), buckets.end());
-    start_stats_thread(destination, buckets);
+    start_stats_thread(destination, host, buckets);
     struct event_base *evbase = event_init();
     if (evbase == NULL) {
         cerr << "Failed to initialize libevent" << endl;

@@ -147,14 +147,19 @@ void * stats_thread (void *arg) {
     /* Create complete file path */
     stat_sock_path.append(std::string(STAT_SOCK_FILE_PREFIX));
 
-    if (arg != NULL) {
-        std::string host((char *)arg);
-        int pos = host.find_first_of(':');
-        if (pos >= 0) 
-            host.erase(pos);
-        stat_sock_path.append(host);
+    std::string host = VbStats::instance()->dest;
+    int pos = host.find_first_of(':');
+    if (pos >= 0) { 
+        host.erase(pos);
     }
-
+    stat_sock_path.append(host);
+    stat_sock_path.append(".");
+    host = VbStats::instance()->src;
+    pos = host.find_first_of(':');
+    if (pos >= 0) { 
+        host.erase(pos);
+    }
+    stat_sock_path.append(host);
 	
     int sfd = 0;
     if ((sfd = server_socket_unix(stat_sock_path.c_str(), 0700)) <= 0 ) {
